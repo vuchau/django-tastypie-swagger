@@ -277,14 +277,18 @@ class ResourceSwaggerMapping(object):
         detail_uri_name = getattr(self.resource._meta, "detail_uri_name", "pk")
         return detail_uri_name == "pk" and "id" or detail_uri_name
 
-    def build_parameters_from_extra_action(self, method, fields, resource_type):
+    def build_parameters_from_extra_action(self, method, fields, resource_type, add_pk=True):
         parameters = []
-        if resource_type == "view":
+        if (method.upper() == 'GET' or resource_type == "view") and add_pk:
             parameters.append(self.build_parameter(paramType='path',
                               name=self._detail_uri_name(),
                               dataType=self.resource_pk_type,
                               description='Primary key of resource'))
         for name, field in fields.items():
+            for parameter in parameters:
+                if parameter.get('name') == name:
+                    parameters.remove(parameter)
+
             parameters.append(self.build_parameter(
                 paramType=field.get("param_type", "query"),
                 name=name,
@@ -297,7 +301,7 @@ class ResourceSwaggerMapping(object):
         # define their own filters, along with Swagger endpoint values.
         # Minimal error checking here. If the User understands enough to want to
         # do this, assume that they know what they're doing.
-        if hasattr(self.resource.Meta, 'custom_filtering'):
+        if hasattr(self.resource.Meta, 'custom_filtering') and method.upper() == 'GET':
             for name, field in self.resource.Meta.custom_filtering.items():
                 parameters.append(self.build_parameter(
                                   paramType='query',
@@ -306,8 +310,6 @@ class ResourceSwaggerMapping(object):
                                   required=field['required'],
                                   description=unicode(field['description'])
                                   ))
-
-
         return parameters
 
     def build_detail_operation(self, method='get'):
@@ -339,6 +341,11 @@ class ResourceSwaggerMapping(object):
         }
 
     def build_extra_operation(self, extra_action):
+        # kip adding pk if no pk in customization API
+        add_pk = True
+        path = extra_action.get('path')
+        if path and 'pk' not in path:
+            add_pk = False
         if "name" not in extra_action:
             raise LookupError("\"name\" is a required field in extra_actions.")
         return {
@@ -349,7 +356,7 @@ class ResourceSwaggerMapping(object):
                 # Default fields to an empty dictionary in the case that it
                 # is not set.
                 fields=extra_action.get('fields', {}),
-                resource_type=extra_action.get("resource_type", "view")),
+                resource_type=extra_action.get("resource_type", "view"), add_pk=add_pk),
             'responseClass': extra_action.get("responseClass", "Object"),
             'nickname': extra_action['name'],
             'notes': extra_action.get('notes', ''),
@@ -395,10 +402,17 @@ class ResourceSwaggerMapping(object):
         if hasattr(self.resource._meta, 'extra_actions'):
             identifier = self._detail_uri_name()
             for extra_action in self.resource._meta.extra_actions:
-                extra_api = {
-                    'path': "%s{%s}/%s/" % (self.get_resource_base_uri(), identifier , extra_action.get('name')),
-                    'operations': []
-                }
+                path = extra_action.get('path')
+                if path and '{pk}' not in path:
+                    extra_api = {
+                        'operations': [],
+                        'path': "%s%s/" % (self.get_resource_base_uri(), extra_action.get('path')),
+                    }
+                else:
+                    extra_api = {
+                        'path': "%s{%s}/%s/" % (self.get_resource_base_uri(), identifier , extra_action.get('name')),
+                        'operations': []
+                    }
 
                 if extra_action.get("resource_type", "view") == "list":
                     extra_api['path'] = "%s%s/" % (self.get_resource_base_uri(), extra_action.get('name'))
