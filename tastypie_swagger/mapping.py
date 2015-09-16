@@ -601,11 +601,10 @@ class ResourceSwaggerMapping(object):
         """
         cls_object = self.resource.__class__
         # Get method name from urls
-        method_name = ''
         path = '/%s/' % path
-        current_url = [url for url in self.resource.urls if path in url.regex.pattern][0]
-        if current_url:
+        try:
+            current_url = [url for url in self.resource.urls if path in url.regex.pattern][0]
             method_name = current_url.name.replace('api_', '')
             return cls_object.__dict__[method_name].__doc__
-        else:
+        except:
             return ''
