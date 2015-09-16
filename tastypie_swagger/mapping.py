@@ -1,4 +1,5 @@
 import datetime
+import misaka as markdownrender
 import logging
 
 from django.db.models.sql.constants import QUERY_TERMS
@@ -326,7 +327,7 @@ class ResourceSwaggerMapping(object):
             ],
             'responseClass': self.resource_name,
             'nickname': '%s_detail' % self.resource_name,
-            'notes': self.resource.__doc__,
+            'notes': markdownrender.html(self.resource.__doc__),
         }
         return operation
 
@@ -337,7 +338,7 @@ class ResourceSwaggerMapping(object):
             'parameters': self.build_parameters_for_list(method=method),
             'responseClass': 'ListView' if method.upper() == 'GET' else self.resource_name,
             'nickname': '%s_list' % self.resource_name,
-            'notes': self.resource.__doc__,
+            'notes': markdownrender.html(self.resource.__doc__),
         }
 
     def build_extra_operation(self, extra_action):
@@ -359,7 +360,7 @@ class ResourceSwaggerMapping(object):
                 resource_type=extra_action.get("resource_type", "view"), add_pk=add_pk),
             'responseClass': extra_action.get("responseClass", "Object"),
             'nickname': extra_action['name'],
-            'notes': extra_action.get('notes', ''),
+            'notes': markdownrender.html(extra_action.get('notes', '')),
         }
 
     def build_detail_api(self):
@@ -403,6 +404,8 @@ class ResourceSwaggerMapping(object):
             identifier = self._detail_uri_name()
             for extra_action in self.resource._meta.extra_actions:
                 path = extra_action.get('path')
+                docs = self.get_method_documents(path)
+                extra_action['notes'] = docs
                 if path and '{pk}' not in path:
                     extra_api = {
                         'operations': [],
@@ -588,3 +591,21 @@ class ResourceSwaggerMapping(object):
                     )
 
         return models
+
+    def get_method_documents(self, path):
+        """
+        Get document of method in Resource by url path
+        :param path: URL path in extra_action
+        :return:
+        Document of method
+        """
+        cls_object = self.resource.__class__
+        # Get method name from urls
+        method_name = ''
+        path = '/%s/' % path
+        current_url = [url for url in self.resource.urls if path in url.regex.pattern][0]
+        if current_url:
+            method_name = current_url.name.replace('api_', '')
+            return cls_object.__dict__[method_name].__doc__
+        else:
+            return ''
