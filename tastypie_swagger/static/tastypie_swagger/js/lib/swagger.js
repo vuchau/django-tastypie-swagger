@@ -626,8 +626,12 @@ SwaggerModelProperty.prototype.getSampleValue = function(modelsToIgnore) {
   } else {
     if (this.isCollection) {
       result = this.toSampleValue(this.refDataType);
-    } else {
-      result = this.toSampleValue(this.value);
+    } else{
+      if (typeof(this.value) !== 'undefined') {
+        result = this.toSampleValue(this.value);
+      } else {
+      result = this.toSampleValue(this.dataType);
+      }
     }
   }
   if (this.isCollection) {
