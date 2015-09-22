@@ -593,6 +593,7 @@ var SwaggerModelProperty = function(name, obj) {
   this.isCollection = this.dataType && (this.dataType.toLowerCase() === 'array' || this.dataType.toLowerCase() === 'list' || this.dataType.toLowerCase() === 'set');
   this.descr = obj.description;
   this.required = obj.required;
+  this.value = obj.value
   if (obj.items != null) {
     if (obj.items.type != null) {
       this.refDataType = obj.items.type;
@@ -626,7 +627,7 @@ SwaggerModelProperty.prototype.getSampleValue = function(modelsToIgnore) {
     if (this.isCollection) {
       result = this.toSampleValue(this.refDataType);
     } else {
-      result = this.toSampleValue(this.dataType);
+      result = this.toSampleValue(this.value);
     }
   }
   if (this.isCollection) {
@@ -1523,7 +1524,7 @@ SwaggerAuthorizations.prototype.apply = function(obj, authorizations) {
           if (result === true)
             status = true;
         }
-      }      
+      }
     }
   }
 
