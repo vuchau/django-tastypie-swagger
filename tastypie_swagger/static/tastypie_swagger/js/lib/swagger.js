@@ -85,6 +85,7 @@ var SwaggerApi = function(url, options) {
   this.basePath = null;
   this.authorizations = null;
   this.authorizationScheme = null;
+  this.api_key = null;
   this.info = null;
   this.useJQuery = false;
 
@@ -99,6 +100,14 @@ var SwaggerApi = function(url, options) {
 
   if (options.url != null)
     this.url = options.url;
+
+  this.apiKeyName = options.apiKeyName != null ? options.apiKeyName : 'api_key';
+  if (options.apiKey != null) {
+    this.api_key = options.apiKey;
+  }
+  if (options.api_key != null) {
+    this.api_key = options.api_key;
+  }
 
   if (options.success != null)
     this.success = options.success;
@@ -315,6 +324,18 @@ SwaggerApi.prototype.help = function() {
     }
   }
   return this;
+};
+
+SwaggerApi.prototype.suffixApiKey = function(url) {
+  var sep;
+  var newUrl = url
+  if ((this.api_key != null) && jQuery.trim(this.api_key).length > 0 && (url != null)) {
+    sep = url.indexOf('?') > 0 ? '&' : '?';
+    if (!_.isEmpty(this.api_key)) {
+      newUrl = url + sep + this.apiKeyName + '=' + this.api_key;
+    }
+  }
+  return newUrl;
 };
 
 var SwaggerResource = function(resourceObj, api) {
@@ -593,6 +614,7 @@ var SwaggerModelProperty = function(name, obj) {
   this.isCollection = this.dataType && (this.dataType.toLowerCase() === 'array' || this.dataType.toLowerCase() === 'list' || this.dataType.toLowerCase() === 'set');
   this.descr = obj.description;
   this.required = obj.required;
+  this.value = obj.value
   if (obj.items != null) {
     if (obj.items.type != null) {
       this.refDataType = obj.items.type;
@@ -625,8 +647,12 @@ SwaggerModelProperty.prototype.getSampleValue = function(modelsToIgnore) {
   } else {
     if (this.isCollection) {
       result = this.toSampleValue(this.refDataType);
-    } else {
+    } else{
+      if (typeof(this.value) !== 'undefined') {
+        result = this.toSampleValue(this.value);
+      } else {
       result = this.toSampleValue(this.dataType);
+      }
     }
   }
   if (this.isCollection) {
@@ -929,7 +955,10 @@ SwaggerOperation.prototype.encodePathParam = function(pathParam) {
 
 SwaggerOperation.prototype.urlify = function(args) {
   var url = this.resource.basePath + this.pathJson();
+
+
   var params = this.parameters;
+
   for(var i = 0; i < params.length; i ++){
     var param = params[i];
     if (param.paramType === 'path') {
@@ -957,6 +986,10 @@ SwaggerOperation.prototype.urlify = function(args) {
   }
   if ((queryParams != null) && queryParams.length > 0)
     url += '?' + queryParams;
+
+  // Add api key
+  url = this.resource.api.suffixApiKey(url)
+
   return url;
 };
 
@@ -1523,7 +1556,7 @@ SwaggerAuthorizations.prototype.apply = function(obj, authorizations) {
           if (result === true)
             status = true;
         }
-      }      
+      }
     }
   }
 

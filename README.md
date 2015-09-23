@@ -8,6 +8,7 @@ This package provides two things:
 
 1. An embedded instance of [Swagger UI](https://github.com/wordnik/swagger-ui) to point a URL to.
 2. Automatic [Resource Listing](https://github.com/wordnik/swagger-core/wiki/Resource-Listing) and [API Declaration](https://github.com/wordnik/swagger-core/wiki/API-Declaration) generation that is consumed by #1
+3. Markdown parsing of Resource docstrings using misaka
 
 
 ### Table of Contents
@@ -55,7 +56,7 @@ Enable documentation for an api endpoint by adding a URL to your urlpatterns.
 
 eg::
 
-  
+
     urlpatterns = patterns('',
         ...
 
@@ -71,7 +72,6 @@ eg::
 To declare more than one endpoint, repeat the above URL definition and change the namespace.
 
 Swagger documentation will be served up at the URL(s) you configured.
-
 
 ## Contributors
 

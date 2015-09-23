@@ -1,4 +1,7 @@
+import json
+import re
 import datetime
+import misaka as markdownrender
 import logging
 
 from django.db.models.sql.constants import QUERY_TERMS
@@ -326,7 +329,7 @@ class ResourceSwaggerMapping(object):
             ],
             'responseClass': self.resource_name,
             'nickname': '%s_detail' % self.resource_name,
-            'notes': self.resource.__doc__,
+            'notes': markdownrender.html(self.resource.__doc__),
         }
         return operation
 
@@ -337,7 +340,7 @@ class ResourceSwaggerMapping(object):
             'parameters': self.build_parameters_for_list(method=method),
             'responseClass': 'ListView' if method.upper() == 'GET' else self.resource_name,
             'nickname': '%s_list' % self.resource_name,
-            'notes': self.resource.__doc__,
+            'notes': markdownrender.html(self.resource.__doc__),
         }
 
     def build_extra_operation(self, extra_action):
@@ -357,9 +360,9 @@ class ResourceSwaggerMapping(object):
                 # is not set.
                 fields=extra_action.get('fields', {}),
                 resource_type=extra_action.get("resource_type", "view"), add_pk=add_pk),
-            'responseClass': extra_action.get("responseClass", "Object"),
+            'responseClass': extra_action.get("responseClass", 'See implement notes'),
             'nickname': extra_action['name'],
-            'notes': extra_action.get('notes', ''),
+            'notes': markdownrender.html(extra_action.get('notes', '')),
         }
 
     def build_detail_api(self):
@@ -403,6 +406,8 @@ class ResourceSwaggerMapping(object):
             identifier = self._detail_uri_name()
             for extra_action in self.resource._meta.extra_actions:
                 path = extra_action.get('path')
+                docs = self.get_method_documents(path)
+                extra_action['notes'] = docs
                 if path and '{pk}' not in path:
                     extra_api = {
                         'operations': [],
@@ -432,9 +437,10 @@ class ResourceSwaggerMapping(object):
             name: {
                 'type': type,
                 'description': description,
-                'required':required
+                'required': required,
             }
         }
+
         if type == 'List':
             prop[name]['items'] = {'$ref': name}
 
@@ -476,7 +482,6 @@ class ResourceSwaggerMapping(object):
                 'id': id
             }
         }
-
 
     def build_list_models_and_properties(self):
         models = {}
@@ -577,8 +582,16 @@ class ResourceSwaggerMapping(object):
         )
 
         if hasattr(self.resource._meta, 'extra_actions'):
+            index = 0
             for extra_action in self.resource._meta.extra_actions:
-                if "model" in extra_action:
+                path = extra_action.get('path')
+                docs = self.get_method_documents(path)
+                response = self.build_response_data_for_extra_action(docs)
+                # Check response description from doc
+                properties = self.build_properties_for_extra_action(response)
+
+                # Try get model from extra action
+                if not properties and "model" in extra_action:
                     models.update(
                         self.build_model(
                         resource_name=extra_action['model']['id'],
@@ -586,5 +599,80 @@ class ResourceSwaggerMapping(object):
                         id=extra_action['model']['id']
                         )
                     )
+                else:
+                    name = extra_action.get('name')
+                    self.resource._meta.extra_actions[index]['responseClass'] = name
+                    models.update(
+                        self.build_model(
+                        resource_name=name,
+                        properties=properties,
+                        id=name
+                        )
+                    )
+
+                index += 1
 
         return models
+
+    def get_method_documents(self, path):
+        """
+        Get document of method in Resource by url path
+        :param path: URL path in extra_action
+        :return:
+        Document of method
+        """
+        cls_object = self.resource.__class__
+        # Get method name from urls
+        path = '/%s/' % path
+        try:
+            current_url = [url for url in self.resource.urls if path in url.regex.pattern][0]
+            method_name = current_url.name.replace('api_', '').strip()
+            docs = cls_object.__dict__[method_name].__doc__
+            return docs
+        except Exception as e:
+            return ''
+
+    def build_response_data_for_extra_action(self, docs):
+        regex = '(response|return)\s+(.*)'
+        match = re.findall(regex, docs, re.DOTALL)
+        response = ''
+        if len(match) > 0:
+            response = match[0][1]
+        return response
+
+    def build_argument_for_extra_action(self, docs):
+        # Get arguments
+        regex = '(:argument(.*?):(return|response))'
+        match = re.findall(regex, docs, re.DOTALL)
+        argument = ''
+        if len(match) > 0:
+            argument = match[0][1]
+        return argument
+
+    def build_properties_for_extra_action(self, json_data):
+
+        properties = {}
+        try:
+            data = json.loads(json_data.replace('\'', "\""))
+            for key, value in data.iteritems():
+                properties[key] = {
+                    'type': self.get_type_of_value(value),
+                    'description': '',
+                    'value': value
+                }
+
+            return properties
+        except:
+            return None
+
+    def get_type_of_value(self, value):
+        """
+        Get type of value
+        """
+
+        _type = type(value)
+        if _type is int:
+            return 'int'
+        elif _type is unicode:
+            return 'string'
+        return 'objects'
