@@ -591,14 +591,15 @@ class ResourceSwaggerMapping(object):
                 properties = self.build_properties_for_extra_action(response)
 
                 # Try get model from extra action
-                if not properties and "model" in extra_action:
-                    models.update(
-                        self.build_model(
-                        resource_name=extra_action['model']['id'],
-                        properties=extra_action['model']['properties'],
-                        id=extra_action['model']['id']
+                if not properties:
+                    if "model" in extra_action:
+                        models.update(
+                            self.build_model(
+                            resource_name=extra_action['model']['id'],
+                            properties=extra_action['model']['properties'],
+                            id=extra_action['model']['id']
+                            )
                         )
-                    )
                 else:
                     name = extra_action.get('name')
                     self.resource._meta.extra_actions[index]['responseClass'] = name
@@ -654,7 +655,7 @@ class ResourceSwaggerMapping(object):
         properties = {}
         try:
             data = json.loads(json_data.replace('\'', "\""))
-            for key, value in data.iteritems():
+            for (key, value) in data.items():
                 properties[key] = {
                     'type': self.get_type_of_value(value),
                     'description': '',
