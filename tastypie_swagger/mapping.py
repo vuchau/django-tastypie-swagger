@@ -163,7 +163,7 @@ class ResourceSwaggerMapping(object):
             'name': "order_by",
             'dataType': "String",
             'required': False,
-            'description': unicode("Orders the result set based on the selection. "
+            'description': str("Orders the result set based on the selection. "
                                    "Ascending order by default, prepending the '-' "
                                    "sign change the sorting order to descending"),
             'allowableValues': {
@@ -311,7 +311,7 @@ class ResourceSwaggerMapping(object):
                                   name=name,
                                   dataType=field['dataType'],
                                   required=field['required'],
-                                  description=unicode(field['description'])
+                                  description=str(field['description'])
                                   ))
         return parameters
 
@@ -673,6 +673,6 @@ class ResourceSwaggerMapping(object):
         _type = type(value)
         if _type is int:
             return 'int'
-        elif _type is unicode:
-            return 'string'
-        return 'objects'
+        elif _type is dict:
+            return 'objects'
+        return 'string'
