@@ -674,6 +674,6 @@ class ResourceSwaggerMapping(object):
         _type = type(value)
         if _type is int:
             return 'int'
-        elif _type is dict:
+        elif _type is dict or list:
             return 'objects'
         return 'string'
