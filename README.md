@@ -32,6 +32,41 @@ This package provides two things:
 
 Detailed documentation is available on [Read The Docs](http://django-tastypie-swagger.readthedocs.org/en/latest/).
 
+**Additional for custom API**
++ URL convention
+
+    ```
+    def prepend_urls(self):
+        ...
+        url(r'^(?P<resource_name>%s)/login%s$' %
+                (self._meta.resource_name, trailing_slash()),
+                self.wrap_view('login'), name="api_login"),
+        ...
+    ```
++ Func convention
+    
+    ```
+    def login(self, request, **kwargs):
+        """
+        Login into system
+
+        :argument
+        { "username" : "test01", "password" : "test01" }
+
+        :return
+        {
+          "avatar_url": "avatar_url",
+          "email": "user02@gmail.com",
+          "full_name": "Test 02",
+          "id": 115,
+          "token": "8937c19ae1a3424f33fb0b7c61578bb954bf6bba",
+          "username": "user02"
+        }
+        """
+        ...
+
+    ```
+    **To get document of method, you must set name of url = "api_" + wrap_view**
 
 ## Installation
 
