@@ -18,7 +18,10 @@ setup(
     long_description=longdesc,
     author='Concentric Sky',
     author_email='code@concentricsky.com',
-    install_requires=['misaka==1.0.2'],
+    install_requires=[
+        'misaka==1.0.2',
+        'django-tastypie >= 0.12.2',
+    ],
     classifiers=[
         'Programming Language :: Python',
         'Environment :: Web Environment',
